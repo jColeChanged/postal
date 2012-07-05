@@ -37,8 +37,24 @@ bool startsWith(const string &s, const string &w) {
   return s.compare(0, w.length(), w) == 0;
 }
 
+bool isNumber(const string &s) {
+  std::string::const_iterator it = s.begin();
+  while (it != s.end() && std::isdigit(*it)) {
+    it++;
+  }
+  return !s.empty() && it == s.end();
+}
+
 string intToString(int number) {
    stringstream ss;
    ss << number;
    return ss.str();
+}
+
+int stringToInt(const string &s) {
+  stringstream ss;
+  ss << s;
+  int integer;
+  ss >> integer;
+  return integer;
 }

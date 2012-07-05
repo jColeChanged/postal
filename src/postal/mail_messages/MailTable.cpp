@@ -62,3 +62,21 @@ MailItem MailTable::popMailItemTo(const string &to) {
   this->mail.remove(item);
   return item;
 }
+
+MailItem MailTable::getMailItemKey(int key) {
+  MailItem item;
+  for (list<MailItem>::const_iterator i = this->mail.begin();
+       i != mail.end();
+       i++) {
+    if ((*i).primaryKey == key) {
+      return *i;
+    }
+  }
+  return item;
+}
+
+MailItem MailTable::popMailItemKey(int key) {
+  MailItem item = getMailItemKey(key);
+  this->mail.remove(item);
+  return item;
+}

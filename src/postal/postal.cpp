@@ -16,9 +16,10 @@ typedef std::map<std::string, std::string> Bindings;
 
 void postalInputHandler(Responses&, MailTable&, string, string);
 void sendMessageHandler(Responses&, MailTable&, string, string);
+void unsendMessageHandler(Responses&, MailTable&, string, string);
 void readMessageHandler(Responses&, MailTable&, string);
 void checkMessagesHandler(Responses&, MailTable&, string);
-
+void sentMessagesHandler(Responses&, MailTable&, string);
 
 
 void postalInputHandler(Responses& responses, 
@@ -34,14 +35,12 @@ void postalInputHandler(Responses& responses,
   else if (startsWith(message, "/postal check")) {
     checkMessagesHandler(responses, table, from);
   }
-  else if (startsWith(message, "/postal sentlist"))
-    {
-      std::cout << "Entered sentlist.";
-    }
-  else if (startsWith(message, "/postal unsend"))
-    {
-      std::cout << "Entered unsend.";
-    }
+  else if (startsWith(message, "/postal sentlist")) {
+    sentMessagesHandler(responses, table, from);
+  }
+  else if (startsWith(message, "/postal unsend")) {
+    unsendMessageHandler(responses, table, from, message);
+  }
   else if (startsWith(message, "/postal read")) {
     readMessageHandler(responses, table, from);   
   }
@@ -107,7 +106,26 @@ void sendMessageHandler(Responses &responses,
   table.addMailItem(from, to, body);
   return;
 }
-
+void unsendMessageHandler(Responses &responses, 
+			  MailTable &table, 
+			  string from, 
+			  string message) {
+  Bindings binds = matchPattern("/postal unsend ?id", message);
+  if (isFailedMatch(binds) || !isNumber(binds.find("?id")->second)) {
+    responses.push_back("/postal unsend expects an id you own to be provided.");
+    return;
+  }
+  int id = stringToInt(binds.find("?id")->second);
+  MailItem item = table.getMailItemKey(id);
+  if (item.from == from) {
+    responses.push_back("Message removed.");
+    table.popMailItemKey(id);
+  }
+  else {
+    responses.push_back("/postal unsend expects an id you own to be provided.");
+  }
+  return;
+}  
 void checkMessagesHandler(Responses& responses, MailTable&table, string user) {
   int size = table.getMailTo(user).size();
   if (size) {
@@ -128,6 +146,23 @@ void readMessageHandler(Responses &responses, MailTable &table, string user) {
   return;
 }
 
+void sentMessagesHandler(Responses &responses, MailTable &table, string from) {
+  list<MailItem> sent = table.getMailFrom(from);
+  string trunucated;
+  string id;
+  string to;
+  for (list<MailItem>::const_iterator i = sent.begin(); i != sent.end(); i++) {
+    trunucated = (*i).body.substr(0, 30);
+    id = intToString((*i).primaryKey);
+    to = (*i).to;
+    responses.push_back("ID: " + id +  " To: " + to + " MSG: " + trunucated + 
+      "...");
+  }
+  return;
+}
+    
+    
+      
 #define CONSOLEMAIL_APP
 #ifdef CONSOLEMAIL_APP
 int main(void)
@@ -152,8 +187,8 @@ int main(void)
     }
     postalInputHandler(responses, table, username, in);
     while (!responses.empty()) {
-      out = responses.back();
-      responses.pop_back();
+      out = responses.front();
+      responses.pop_front();
       cout << out << endl;
     }
   }

@@ -1,6 +1,12 @@
 #include "MailItem.h"
+MailItem::MailItem() {
+  this->from = "";
+  this->to = "";
+  this->body = "";
+  this->primaryKey = 0;
+}
 
-MailItem::MailItem(std::string from, std::string to, std::string body, unsigned long primaryKey) {
+MailItem::MailItem(std::string from, std::string to, std::string body, int primaryKey) {
   this->from = from;
   this->to = to;
   this->body = body;

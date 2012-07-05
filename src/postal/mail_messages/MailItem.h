@@ -5,13 +5,13 @@
 class MailItem
 {
 public:
-  MailItem(std::string from, std::string to, std::string body, 
-	   unsigned long primaryKey);
+  MailItem();
+  MailItem(std::string from, std::string to, std::string body, int primaryKey);
   ~MailItem(){};
   std::string from;
   std::string to;
   std::string body;
-  unsigned long primaryKey;
+  int primaryKey;
 };
 
 bool operator<(const MailItem &lhs, const MailItem &rhs);
