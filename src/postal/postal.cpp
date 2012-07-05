@@ -7,34 +7,33 @@
 #include "mail_messages/MailTable.h"
 
 const int MAX_SENT = 20;
-const int MAX_MSG_LENGTH = 255;
+const int MAX_MSG_LENGTH = 500;
 
 using namespace std;
 
 typedef std::list<std::string> Responses;
 typedef std::map<std::string, std::string> Bindings;
-typedef std::list<MailItem> MAIL_ITEMS;
 
+void postalInputHandler(Responses&, MailTable&, string, string);
 void sendMessageHandler(Responses&, MailTable&, string, string);
+void readMessageHandler(Responses&, MailTable&, string);
 void checkMessagesHandler(Responses&, MailTable&, string);
 
-MAIL_ITEMS get_items_from_user(const MAIL_ITEMS &, std::string);
-MAIL_ITEMS get_items_to_user(const MAIL_ITEMS &, std::string);
-MAIL_ITEMS get_unread_items(const MAIL_ITEMS &, std::string);
 
 
-
-Responses process_message(std::string from, std::string message)
-{
-  Responses responses;
-  if (startsWith(message, "/postal help"))
-    {
-      std::cout << "Entered help.";
-    }
-  else if (startsWith(message, "/postal send"))
-    {
-   
-    }
+void postalInputHandler(Responses& responses, 
+			MailTable& table, 
+			string from, 
+			string message) {
+  if (startsWith(message, "/postal help")) {
+    std::cout << "Entered help.";
+  }
+  else if (startsWith(message, "/postal send")) {
+    sendMessageHandler(responses, table, from, message);
+  }
+  else if (startsWith(message, "/postal check")) {
+    checkMessagesHandler(responses, table, from);
+  }
   else if (startsWith(message, "/postal sentlist"))
     {
       std::cout << "Entered sentlist.";
@@ -43,10 +42,9 @@ Responses process_message(std::string from, std::string message)
     {
       std::cout << "Entered unsend.";
     }
-  else if (startsWith(message, "/postal read"))
-    {
-      std::cout << "Entered read.";
-    }
+  else if (startsWith(message, "/postal read")) {
+    readMessageHandler(responses, table, from);   
+  }
   else if (startsWith(message, "/postal ignore"))
     {
       std::cout << "Entered ignore.";
@@ -59,27 +57,10 @@ Responses process_message(std::string from, std::string message)
     {
       std::cout << "Entered unignore.";
     }
-  return responses;
+  return;
 }
 
-std::string process_room_entrance(std::string user);
 
-//void print(const MAIL_ITEMS &);
-
-int main(void)
-{
-  MailTable mail;
-  Responses responses;
-  
-  string in;
-  string out;
-  while (true) {
-    getline(cin, in);
-    out = in;
-    cout << out << endl;
-  }
-  return 0;
-}
   /*
   MAIL_ITEMS items;
   std::string header("POSTAL - IM the offline.\nSend me a message and I'll give it to someone else when they join the room. I try to keep things private so please interact with me via IMs.\n");
@@ -96,30 +77,6 @@ int main(void)
   "/postal ignorelist"                                                 "\n"
   "/postal unignore [user]"                                            "\n");
   std::cout << help << std::endl; */
-
-
-
-
-MAIL_ITEMS get_items_to_user(const MAIL_ITEMS & items, std::string user)
-{
-  MAIL_ITEMS items_to_return;
-  for (MAIL_ITEMS::const_iterator iter = items.begin(); iter != items.end(); iter++)
-  {
-    if (iter->to == user)
-    {
-      items_to_return.push_back(*iter);
-    }
-  }
-  return items_to_return;
-}
-
-void print(const MAIL_ITEMS &items)
-{
-  for (MAIL_ITEMS::const_iterator iter = items.begin(); iter != items.end(); iter++)
-  {
-    std::cout << iter->from << " ";
-  }
-}
 
 void sendMessageHandler(Responses &responses, 
 			MailTable &table, 
@@ -140,7 +97,7 @@ void sendMessageHandler(Responses &responses,
     return;
   }
   string to = binds.find("?user")->second;
-  string body = binds.find("?body")->second;
+  string body = binds.find("?*body")->second;
   if (MAX_MSG_LENGTH <= body.length()) {
     responses.push_back("In order to prevent abuse, there is a limit on the "
       "length of messages. You have passed this limit. This postal system is "
@@ -159,3 +116,47 @@ void checkMessagesHandler(Responses& responses, MailTable&table, string user) {
   }
   return;
 }
+
+void readMessageHandler(Responses &responses, MailTable &table, string user) {
+  if (table.getMailTo(user).size()) {
+    MailItem item = table.popMailItemTo(user);
+    responses.push_back(item.from + " said: " + item.body);
+  }
+  else {
+    responses.push_back("You don't have any unread messages.");
+  }
+  return;
+}
+
+#define CONSOLEMAIL_APP
+#ifdef CONSOLEMAIL_APP
+int main(void)
+{
+  MailTable table;
+  Responses responses;
+  
+  cout << "To change your username use '/user username'. Doing so will cause "
+       << "the user to 'enter the room' as the user you specify.\n";
+  
+  string username = "user1";
+  string in;
+  string out;
+  while (true) {
+    cout << "POSTAL> ";
+    getline(cin, in);
+    Bindings binds = matchPattern("/user ?user", in);
+    if (!isFailedMatch(binds)) {
+      username = binds.find("?user")->second;
+      responses.push_back(username + " has joined the room.");
+      checkMessagesHandler(responses, table, username);
+    }
+    postalInputHandler(responses, table, username, in);
+    while (!responses.empty()) {
+      out = responses.back();
+      responses.pop_back();
+      cout << out << endl;
+    }
+  }
+  return 0;
+}
+#endif

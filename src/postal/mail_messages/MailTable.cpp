@@ -56,3 +56,9 @@ list<MailItem> MailTable::getMailTo(const string &to)
   }
   return items_to_return;
 }
+
+MailItem MailTable::popMailItemTo(const string &to) {
+  MailItem item = this->getMailTo(to).back();
+  this->mail.remove(item);
+  return item;
+}
