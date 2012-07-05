@@ -1,6 +1,7 @@
 #include <iostream>
 #include <list>
 #include <string>
+#include <algorithm>
 #include <map>
 #include "helpers/strings.h"
 #include "helpers/pattern.h"
@@ -16,7 +17,7 @@ typedef std::map<std::string, std::string> Bindings;
 typedef std::map<std::string, std::list<std::string> > IgnoreMap;
 
 void postalInputHandler(Responses&, MailTable&, IgnoreMap&, string, string);
-void sendMessageHandler(Responses&, MailTable&, string, string);
+void sendMessageHandler(Responses&, MailTable&, IgnoreMap&, string, string);
 void unsendMessageHandler(Responses&, MailTable&, string, string);
 void readMessageHandler(Responses&, MailTable&, string);
 void checkMessagesHandler(Responses&, MailTable&, string);
@@ -40,7 +41,7 @@ void postalInputHandler(Responses& responses,
     aboutMessageHandler(responses);
   }
   else if (startsWith(message, "/postal send")) {
-    sendMessageHandler(responses, table, from, message);
+    sendMessageHandler(responses, table, ignores, from, message);
   }
   else if (startsWith(message, "/postal check")) {
     checkMessagesHandler(responses, table, from);
@@ -68,6 +69,7 @@ void postalInputHandler(Responses& responses,
 
 void sendMessageHandler(Responses &responses, 
 			MailTable &table, 
+			IgnoreMap &ignores,
 			string from, 
 			string message) {
   if (MAX_SENT <= table.getMailFrom(from).size()) {
@@ -86,6 +88,16 @@ void sendMessageHandler(Responses &responses,
   }
   string to = binds.find("?user")->second;
   string body = binds.find("?*body")->second;
+  IgnoreMap::iterator iter = ignores.find(to);
+  if (iter != ignores.end()) {
+    list<string>::iterator iterTwo = find(iter->second.begin(),
+					  iter->second.end(),
+					  from);
+    if (iterTwo == iter->second.end()) {
+	responses.push_back("Sorry, that person has you on ignore.");
+	return;
+    }
+  }
   if (MAX_MSG_LENGTH <= body.length()) {
     responses.push_back("In order to prevent abuse, there is a limit on the "
       "length of messages. You have passed this limit. This postal system is "
@@ -114,7 +126,8 @@ void unsendMessageHandler(Responses &responses,
     responses.push_back("/postal unsend expects an id you own to be provided.");
   }
   return;
-}  
+}
+
 void checkMessagesHandler(Responses& responses, MailTable&table, string user) {
   int size = table.getMailTo(user).size();
   if (size) {
