@@ -154,8 +154,8 @@ void sendMessageHandler(Responses &responses,
 void checkMessagesHandler(Responses& responses, MailTable&table, string user) {
   int size = table.getMailTo(user).size();
   if (size) {
-    responses.push_back(user + " you have " + size + " unread message(s). To "
-      " read a message you can use '/postal read'");
+    responses.push_back(user + " you have " + intToString(size) + " unread "
+      "message(s). To read a message you can use '/postal read'");
   }
   return;
 }

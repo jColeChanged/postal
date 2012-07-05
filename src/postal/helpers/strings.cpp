@@ -1,4 +1,5 @@
 #include "strings.h"
+#include <sstream>
 
 using namespace std;
 
@@ -34,4 +35,10 @@ string join(const list<string> &tokens, char sep) {
 
 bool startsWith(const string &s, const string &w) {
   return s.compare(0, w.length(), w) == 0;
+}
+
+string intToString(int number) {
+   stringstream ss;
+   ss << number;
+   return ss.str();
 }
