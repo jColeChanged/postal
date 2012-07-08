@@ -93,7 +93,7 @@ void sendMessageHandler(Responses &responses,
     list<string>::iterator iterTwo = find(iter->second.begin(),
 					  iter->second.end(),
 					  from);
-    if (iterTwo == iter->second.end()) {
+    if (iterTwo != iter->second.end()) {
 	responses.push_back("Sorry, that person has you on ignore.");
 	return;
     }
