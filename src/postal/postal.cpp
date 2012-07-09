@@ -11,6 +11,8 @@
 const int MAX_SENT = 20;
 const int MAX_MSG_LENGTH = 500;
 const int MAX_IGNORES = 20;
+const char * IGNORES_FILE = "postalignores.xml";
+
 using namespace std;
 
 typedef std::list<std::string> Responses;
@@ -38,9 +40,6 @@ void postalInputHandler(Responses& responses,
 			IgnoreMap& ignores,
 			string from, 
 			string message) {
-  if (startsWith(message, "/postal persistsave")) {
-    persistIgnoreSave("test.xml", ignores);
-  }  
   if (startsWith(message, "/postal help")) {
     helpMessageHandler(responses);
   }
@@ -213,6 +212,7 @@ void ignoreMessageHandler(Responses &responses,
   }
   ignores[from].push_back(toIgnore);
   responses.push_back(toIgnore + " can no longer send you messages.");
+  persistIgnoreSave(IGNORES_FILE, ignores);
 }
 
 void unignoreMessageHandler(Responses &responses, 
@@ -233,6 +233,7 @@ void unignoreMessageHandler(Responses &responses,
   }
   ignores[from].remove(binds.find("?user")->second);
   responses.push_back("No longer ignoring " + binds.find("?user")->second);
+  persistIgnoreSave(IGNORES_FILE, ignores);
 }
   
 void ignoreListHandler(Responses &responses, IgnoreMap &ignores, string from) {
@@ -259,7 +260,7 @@ int main(void)
   
   cout << "To change your username use '/user username'. Doing so will cause "
        << "the user to 'enter the room' as the user you specify.\n";
-  persistIgnoreLoad("test.xml", ignores);
+  persistIgnoreLoad(IGNORES_FILE, ignores);
   string username = "user1";
   string in;
   string out;
