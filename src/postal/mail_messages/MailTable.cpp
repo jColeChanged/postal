@@ -80,3 +80,7 @@ MailItem MailTable::popMailItemKey(int key) {
   this->mail.remove(item);
   return item;
 }
+
+list<MailItem> MailTable::getAllMail() {
+  return this->mail;
+}

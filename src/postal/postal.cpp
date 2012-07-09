@@ -6,12 +6,14 @@
 #include "helpers/strings.h"
 #include "helpers/pattern.h"
 #include "mail_messages/MailTable.h"
+#include "mail_messages/MailItem.h"
 #include "tinyxml/tinyxml.h"
 
 const int MAX_SENT = 20;
 const int MAX_MSG_LENGTH = 500;
 const int MAX_IGNORES = 20;
 const char * IGNORES_FILE = "postalignores.xml";
+const char * MAILS_FILE = "postalmail.xml";
 
 using namespace std;
 
@@ -21,6 +23,9 @@ typedef std::map<std::string, std::list<std::string> > IgnoreMap;
 
 void persistIgnoreSave(const char * pFileName, IgnoreMap &ignores);
 void persistIgnoreLoad(const char * pFileName, IgnoreMap &ignores);
+
+void persistMailSave(const char * pFileName, MailTable &table);
+void persistMailLoad(const char * pFileName, MailTable &table);
 
 void postalInputHandler(Responses&, MailTable&, IgnoreMap&, string, string);
 void sendMessageHandler(Responses&, MailTable&, IgnoreMap&, string, string);
@@ -111,6 +116,7 @@ void sendMessageHandler(Responses &responses,
     return;
   }
   table.addMailItem(from, to, body);
+  persistMailSave(MAILS_FILE, table);
   return;
 }
 
@@ -128,6 +134,7 @@ void unsendMessageHandler(Responses &responses,
   if (item.from == from) {
     responses.push_back("Message removed.");
     table.popMailItemKey(id);
+    persistMailSave(MAILS_FILE, table);
   }
   else {
     responses.push_back("/postal unsend expects an id you own to be provided.");
@@ -147,6 +154,7 @@ void checkMessagesHandler(Responses& responses, MailTable&table, string user) {
 void readMessageHandler(Responses &responses, MailTable &table, string user) {
   if (table.getMailTo(user).size()) {
     MailItem item = table.popMailItemTo(user);
+    persistMailSave(MAILS_FILE, table);
     responses.push_back(item.from + " said: " + item.body);
   }
   else {
@@ -261,6 +269,7 @@ int main(void)
   cout << "To change your username use '/user username'. Doing so will cause "
        << "the user to 'enter the room' as the user you specify.\n";
   persistIgnoreLoad(IGNORES_FILE, ignores);
+  persistMailLoad(MAILS_FILE, table);
   string username = "user1";
   string in;
   string out;
@@ -282,6 +291,7 @@ int main(void)
   }
   return 0;
 }
+#endif
 
 void persistIgnoreSave(const char * pFileName, IgnoreMap &ignores) {
   TiXmlDocument doc;
@@ -345,4 +355,56 @@ void persistIgnoreLoad(const char * pFileName, IgnoreMap &ignores) {
     }
   }
 }     
-#endif
+
+void persistMailSave(const char * pFileName, MailTable &table) {
+  TiXmlDocument doc;
+  
+  TiXmlDeclaration * declaration = new TiXmlDeclaration("1.0", "", "");
+  doc.LinkEndChild(declaration);
+  
+  TiXmlElement * root = new TiXmlElement("MailTable");
+  doc.LinkEndChild(root);
+  
+  list<MailItem> mail = table.getAllMail();
+  list<MailItem>::iterator iter;
+  for (iter=mail.begin(); iter != mail.end(); iter++) {
+    TiXmlElement * mailItem = new TiXmlElement("MailItem");
+    root->LinkEndChild(mailItem);
+    mailItem->SetAttribute("from", (*iter).from.c_str());
+    mailItem->SetAttribute("to", (*iter).to.c_str());
+    mailItem->SetAttribute("body", (*iter).body.c_str());
+    mailItem->SetAttribute("id", intToString((*iter).primaryKey).c_str());
+  }
+  doc.SaveFile(pFileName);
+}
+
+void persistMailLoad(const char * pFileName, MailTable &table)
+{
+  TiXmlDocument doc(pFileName);
+  if (!doc.LoadFile()) {
+    return;
+  }
+  TiXmlHandle hDoc(&doc);
+  TiXmlElement * pElem;
+  TiXmlHandle hRoot(0);
+  
+  // make sure the file has a valid root
+  pElem = hDoc.FirstChildElement().Element();
+  if (!pElem) {
+    return;
+  }
+  hRoot = TiXmlHandle(pElem);
+  
+  list<MailItem> mail;
+  TiXmlElement * mailNode;
+  mailNode = hRoot.FirstChildElement().Element();
+  for (mailNode; mailNode; mailNode=mailNode->NextSiblingElement()) {
+    const char * from = mailNode->Attribute("from");
+    const char * to = mailNode->Attribute("to");
+    const char * body = mailNode->Attribute("body");
+    const char * id = mailNode->Attribute("id");
+    mail.push_back(MailItem(from, to, body, stringToInt(id)));
+  }
+  mail.sort();
+  table = MailTable(mail);
+}

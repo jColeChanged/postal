@@ -15,6 +15,7 @@ public:
   MailItem getMailItemKey(int key);
   MailItem popMailItemKey(int key);
   MailItem popMailItemTo(const std::string &to);
+  std::list<MailItem> getAllMail();
 private:
   unsigned long getUnusedKey();
   std::list<MailItem> mail;
