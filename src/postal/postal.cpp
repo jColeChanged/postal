@@ -6,6 +6,7 @@
 #include "helpers/strings.h"
 #include "helpers/pattern.h"
 #include "mail_messages/MailTable.h"
+#include "tinyxml/tinyxml.h"
 
 const int MAX_SENT = 20;
 const int MAX_MSG_LENGTH = 500;
@@ -15,6 +16,9 @@ using namespace std;
 typedef std::list<std::string> Responses;
 typedef std::map<std::string, std::string> Bindings;
 typedef std::map<std::string, std::list<std::string> > IgnoreMap;
+
+void persistIgnoreSave(const char * pFileName, IgnoreMap &ignores);
+void persistIgnoreLoad(const char * pFileName, IgnoreMap &ignores);
 
 void postalInputHandler(Responses&, MailTable&, IgnoreMap&, string, string);
 void sendMessageHandler(Responses&, MailTable&, IgnoreMap&, string, string);
@@ -34,6 +38,9 @@ void postalInputHandler(Responses& responses,
 			IgnoreMap& ignores,
 			string from, 
 			string message) {
+  if (startsWith(message, "/postal persistsave")) {
+    persistIgnoreSave("test.xml", ignores);
+  }  
   if (startsWith(message, "/postal help")) {
     helpMessageHandler(responses);
   }
@@ -107,6 +114,7 @@ void sendMessageHandler(Responses &responses,
   table.addMailItem(from, to, body);
   return;
 }
+
 void unsendMessageHandler(Responses &responses, 
 			  MailTable &table, 
 			  string from, 
@@ -251,7 +259,7 @@ int main(void)
   
   cout << "To change your username use '/user username'. Doing so will cause "
        << "the user to 'enter the room' as the user you specify.\n";
-  
+  persistIgnoreLoad("test.xml", ignores);
   string username = "user1";
   string in;
   string out;
@@ -273,4 +281,67 @@ int main(void)
   }
   return 0;
 }
+
+void persistIgnoreSave(const char * pFileName, IgnoreMap &ignores) {
+  TiXmlDocument doc;
+  
+  TiXmlDeclaration * declaration = new TiXmlDeclaration("1.0", "", "");
+  doc.LinkEndChild(declaration);
+  
+  TiXmlElement * root = new TiXmlElement("IgnoreList");
+  doc.LinkEndChild(root);
+  
+  IgnoreMap::iterator iter;
+  for (iter=ignores.begin(); iter != ignores.end(); iter++) {
+    const string user = iter->first;
+    TiXmlElement * userElement = new TiXmlElement("User");
+    root->LinkEndChild(userElement);
+    userElement->SetAttribute("name", user.c_str());
+    list<string>::iterator iter2;
+    for (iter2=iter->second.begin(); iter2 != iter->second.end(); iter2++) {
+      TiXmlElement * ignoredUserElement = new TiXmlElement("User");
+      userElement->LinkEndChild(ignoredUserElement);
+      ignoredUserElement->SetAttribute("name", (*iter2).c_str());
+    }
+  }
+  doc.SaveFile(pFileName);
+}
+
+void persistIgnoreLoad(const char * pFileName, IgnoreMap &ignores) {
+  TiXmlDocument doc(pFileName);
+  if (!doc.LoadFile()) {
+    return;
+  }
+  TiXmlHandle hDoc(&doc);
+  TiXmlElement * pElem;
+  TiXmlHandle hRoot(0);
+  
+  // make sure the file has a valid root
+  pElem = hDoc.FirstChildElement().Element();
+  if (!pElem) {
+    return;
+  }
+  hRoot = TiXmlHandle(pElem);
+  
+  TiXmlHandle elementHandler(0);
+  TiXmlElement * ignoreNode;
+  TiXmlElement * userNode;
+  userNode = hRoot.FirstChildElement().Element();
+  for (userNode; userNode; userNode=userNode->NextSiblingElement()) {
+    elementHandler = TiXmlHandle(userNode);
+    // make sure the userNode has children
+    ignoreNode = elementHandler.FirstChildElement().Element();
+    if (ignoreNode) {
+      const char * ignorer = userNode->Attribute("name");
+      list<string> ignoreList;
+      for (ignoreNode; 
+	   ignoreNode; 
+	   ignoreNode=ignoreNode->NextSiblingElement()) {
+	const char * ignoree = ignoreNode->Attribute("name");
+	ignoreList.push_back(ignoree);
+      }
+      ignores[ignorer] = ignoreList;
+    }
+  }
+}     
 #endif
